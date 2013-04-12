@@ -248,14 +248,14 @@ if __name__ == "__main__":
 	parser.add_argument("-v", "--verbose", help="enables verbose output", action="store_true")
 	parser.add_argument("-c", "--clean", help="HTML data will be cleaned before saving", action="store_true")
 	args, unknown = parser.parse_known_args()
-	if(args.verbose):
+	if args.verbose:
 		print args
 		print unknown
 	print "Crawler has started!"
 	print "Frontier: " + args.frontier
 	print "Base URL: " + args.base
 	# Populate seeds
-	if(args.resume):
+	if args.resume:
 		# Load seeds and visited from disk
 		if(args.verbose):
 			print "Loading seed URLs from disk."
@@ -267,7 +267,7 @@ if __name__ == "__main__":
 			print "Error: Could not load seed URLs from disk. Defaulting to frontier."
 			visit(args.frontier, args.base)
 	else:
-		if(args.verbose):
+		if args.verbose:
 			print "Collecting seed URLs from the frontier!"
 		visit(args.frontier, args.base)
 	throttle(args.min, args.max)
@@ -278,10 +278,10 @@ if __name__ == "__main__":
 		crawled += 1
 		throttle(args.min, args.max)
 		if crawled % CONST_DEFAULT_SAVE_INTERVAL == 0:
-			if(args.verbose):
+			if args.verbose:
 				print "Saving seed URLs to disk."
 			save_set(CONST_RESUME_FILE_NAME, seeds)
-			if(args.verbose):
+			if args.verbose:
 				print "Saving visited URLs to disk."
 			save_set(CONST_VISITED_FILE_NAME, visited)
 	print "Crawler has finished!"
