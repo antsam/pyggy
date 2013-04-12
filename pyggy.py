@@ -98,8 +98,6 @@ def get_save_path(url):
 
 # Visit a URL and save it to disk
 def visit(url, base):
-	if (base not in url) and (base[:-1] not in url):
-		sys.exit("Fatal Error: URL does not belong to the current site! Resumed from wrong site data?")
 	url_hash = get_url_hash(url)
 	if url_hash in visited:
 		if args.verbose:
@@ -256,8 +254,6 @@ if __name__ == "__main__":
 	print "Crawler has started!"
 	print "Frontier: " + args.frontier
 	print "Base URL: " + args.base
-	if (args.base not in args.frontier) and (args.base[:-1] not in args.frontier):
-		sys.exit("Fatal Error: Base URL not contained in frontier URL!")
 	# Populate seeds
 	if(args.resume):
 		# Load seeds and visited from disk
