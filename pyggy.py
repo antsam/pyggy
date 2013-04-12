@@ -3,16 +3,20 @@
 # Author: Anton Samson <anton@antonsamson.com>
 # Available freely at: https://github.com/antsam/pyggy
 #
-# A web crawler that will save all the pages/files from a specific domain/subdomain onto disk.
+# A web crawler that will save all the pages/files from a specific
+# domain/subdomain onto disk.
 #
 # To start with default settings: python pyggy.py -v
-# The -v flag will turn on verbose output so you can see what the crawler is currently doing.
+# The -v flag will turn on verbose output so you can see what the
+# crawler is currently doing.
 #
-# Currently does not deep crawl dynamic pages, e.g. contains ?variable=something
+# Currently does not deep crawl dynamic pages
+# e.g. contains ?variable=something
 #
 # The crawler will save its visited and seed URLs every N page visits.
 #
 # TODO: Add multi-threading
+# TODO: Switch to urlparse and possibly Requests
 # TODO: Add support for user authentication/login pages
 #
 
@@ -23,11 +27,10 @@ import hashlib
 import os
 from time import sleep
 from random import randint
-from lxml import html
 import lxml.html.clean
 
 # Constsants
-CONST_HEADERS = {"User-Agent" : "Pyggy 0.1 - https://github.com/antsam/pyggy"}
+CONST_HEADERS = {"User-Agent": "Pyggy 0.1 - https://github.com/antsam/pyggy"}
 CONST_HTTP = "http://"
 CONST_HTTPS = "https://"
 CONST_RESUME_FILE_NAME = "resume.dat"
@@ -39,6 +42,7 @@ CONST_DEFAULT_SAVE_PATH = "./data/"
 CONST_DEFAULT_SAVE_INTERVAL = int(5)
 CONST_DEFAULT_MIN_WAIT = int(10)
 CONST_DEFAULT_MAX_WAIT = int(15)
+CONST_DEFAULT_MAX_SIZE = int(1048576)
 
 # Shared variables
 visited = set()
@@ -47,25 +51,28 @@ args = []
 
 # Make a thread sleep
 def throttle(lower, upper):
-  wait = randint(lower, upper)
-	if(args.verbose): print "Sleeping for " + str(wait) + " seconds"
+	wait = randint(lower, upper)
+	if(args.verbose):
+		print "Sleeping for " + str(wait) + " seconds"
 	sleep(wait)
 
-# Document has a text content-type
+# Is this document parsable?
 def is_text(header):
-	if header["content-type"].startswith("text/"):
-		return True
-	return False
+	if "content-length" in header:
+		file_size = int(header["content-length"])
+	else:
+		file_size = 0
+	return header["content-type"].startswith("text/") and (file_size >= 0) and (file_size <= CONST_DEFAULT_MAX_SIZE)
 
 # Get the SHA1 checksum of a file
-def file_checksum(fp, block_size=2**20):
-    sha1 = hashlib.sha1()
-    while True:
-        data = fp.read(block_size)
-        if not data:
-            break
-        sha1.update(data)
-    return sha1.hexdigest()
+def file_checksum(fp, block_size = 2**20):
+	sha1 = hashlib.sha1()
+	while True:
+		data = fp.read(block_size)
+		if not data:
+			break
+		sha1.update(data)
+	return sha1.hexdigest()
 
 # Get the SHA1 hash of a String
 def checksum(text):
@@ -95,7 +102,8 @@ def visit(url, base):
 		sys.exit("Fatal Error: URL does not belong to the current site! Resumed from wrong site data?")
 	url_hash = get_url_hash(url)
 	if url_hash in visited:
-		if args.verbose: print "This URL has already been visited: " + url
+		if args.verbose:
+			print "This URL has already been visited: " + url
 		return
 	else:
 		visited.add(url_hash)
@@ -105,7 +113,8 @@ def visit(url, base):
 		raw = urllib2.urlopen(req)
 	except urllib2.URLError, e:
 		print "Received HTTP error from: " + url
-		if hasattr(e, "code") and e.code: "Status code was: " + str(e.code)
+		if hasattr(e, "code") and e.code:
+			print "Status code was: " + str(e.code)
 		return
 	else:
 		can_parse = is_text(raw.info().dict)
@@ -115,7 +124,6 @@ def visit(url, base):
 		if can_parse:
 			if (not file_name) or ("." not in file_name):
 				save_path = save_path + file_name
-				print save_path
 				file_name = "/index.html"
 		file_path = save_path + file_name
 		file_path = file_path.replace("//", "/")
@@ -133,16 +141,18 @@ def visit(url, base):
 				os.makedirs(save_path)
 			fh = open(file_path, "w")
 			if can_parse:
-				if(args.verbose): print "URL has text content."
+				if(args.verbose):
+					print "URL has text content."
 				if(args.clean):
 					fh.write(cleaned)
+					cleaned = None
 				else:
 					fh.write(raw_data)
 				fh.close()
 				get_links(url, base, raw_data)
-				cleaned = None
 			else:
-				if(args.verbose): print "URL is binary or non-text."
+				if(args.verbose):
+					print "URL is binary or non-text."
 				fh.write(raw_data)
 				fh.close()
 			raw_data = None
@@ -152,25 +162,26 @@ def visit(url, base):
 			# TODO: check mime-type of file before opening
 			fh = open(file_path, "r+")
 			local_checksum = file_checksum(fh)
-			if args.clean and (checksum(cleaned) == local_checksum):
-				if args.verbose: print "Page content has not changed."
-			elif checksum(raw_data) == local_checksum:
-				if args.verbose: print "Page content has not changed."
+			if args.clean and (checksum(cleaned) == local_checksum) and args.verbose:
+				print "Page content has not changed."
+			elif (checksum(raw_data) == local_checksum) and args.verbose:
+				print "Page content has not changed."
 			else:
 				# Overwrite old data
-				if args.verbose: print "Page content has changed since last visit."
+				if args.verbose:
+					print "Page content has changed since last visit."
 				fh.seek(0)
 				if args.clean and can_parse:
 					fh.write(cleaned)
+					cleaned = None
 				else:
 					fh.write(raw_data)
 				fh.truncate()
 			fh.close()
 			if can_parse:
 				get_links(url, base, raw_data)
-				cleaned = None
 			raw_data = None
-			
+
 # Strip anchors and dynamic content from URLs
 def strip_url(url):
 	new_url = url
@@ -179,7 +190,7 @@ def strip_url(url):
 	if "#" in url:
 		new_url = new_url[0:new_url.find("#")]
 	return new_url
-	
+
 # Query for links
 def query_links(query, base):
 	links = [strip_url(link) for link in query if(link.startswith(CONST_HTTP+base)) or (link.startswith(CONST_HTTPS+base))]
@@ -187,9 +198,14 @@ def query_links(query, base):
 
 # Parse HTML for links
 def get_links(url, base, html):
-	dom = lxml.html.fromstring(html, base_url=CONST_HTTP+base)
+	try:
+		dom = lxml.html.fromstring(html, base_url=CONST_HTTP+base)
+	except:
+		print "Error: Could not parse file!"
+		return
 	dom.make_links_absolute(url)
 	links = query_links(dom.xpath("//a/@href"), base) + query_links(dom.xpath("//frame/@src"), base) + query_links(dom.xpath("//iframe/@src"), base)
+	dom = None
 	for link in links:
 		hashed = get_url_hash(link)
 		if(hashed not in visited):
@@ -245,7 +261,8 @@ if __name__ == "__main__":
 	# Populate seeds
 	if(args.resume):
 		# Load seeds and visited from disk
-		if(args.verbose): print "Loading seed URLs from disk."
+		if(args.verbose):
+			print "Loading seed URLs from disk."
 		seeds.update(load_set(CONST_RESUME_FILE_NAME))
 		visited.update(load_set(CONST_VISITED_FILE_NAME))
 		if len(seeds) > 0:
@@ -254,7 +271,8 @@ if __name__ == "__main__":
 			print "Error: Could not load seed URLs from disk. Defaulting to frontier."
 			visit(args.frontier, args.base)
 	else:
-		if(args.verbose): print "Collecting seed URLs from the frontier!"
+		if(args.verbose):
+			print "Collecting seed URLs from the frontier!"
 		visit(args.frontier, args.base)
 	throttle(args.min, args.max)
 	crawled = 0
@@ -262,11 +280,12 @@ if __name__ == "__main__":
 		print "Current number of seeds: " + str(len(seeds))
 		visit(seeds.pop(), args.base)
 		crawled += 1
-		throttle(args.min, args.max)	# change this so we don't throttle when reading locally?
+		throttle(args.min, args.max)
 		if crawled % CONST_DEFAULT_SAVE_INTERVAL == 0:
-			if(args.verbose): print "Saving seed URLs to disk."
+			if(args.verbose):
+				print "Saving seed URLs to disk."
 			save_set(CONST_RESUME_FILE_NAME, seeds)
-			if(args.verbose): print "Saving visited URLs to disk."
+			if(args.verbose):
+				print "Saving visited URLs to disk."
 			save_set(CONST_VISITED_FILE_NAME, visited)
 	print "Crawler has finished!"
-

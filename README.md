@@ -75,6 +75,7 @@ and make sure that it includes a trailing slash:
 * Multithreading
 * Crawling based on stored data's age.
 * Better handle dynamic webpages like calendars or forums.
+* Adoption of urlparse and the Request library.
 
 ## Changelog
 * April 11, 2013 - User friendly filenames are now used for stored data.
