@@ -262,7 +262,10 @@ if __name__ == "__main__":
 		seeds.update(load_set(CONST_RESUME_FILE_NAME))
 		visited.update(load_set(CONST_VISITED_FILE_NAME))
 		if len(seeds) > 0:
-			visit(seeds.pop(), args.base)
+			seed = seeds.pop()
+			if (args.base not in seed) and (args.base[:-1] not in seed):
+				sys.exit("Fatal Error: URL does not belong to the current site! Resumed from wrong site data?")
+			visit(seed, args.base)
 		else:
 			print "Error: Could not load seed URLs from disk. Defaulting to frontier."
 			visit(args.frontier, args.base)
